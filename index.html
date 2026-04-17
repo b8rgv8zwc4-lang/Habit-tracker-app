@@ -188,7 +188,6 @@ input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px color
     </nav>
     <div class="sidebar-footer">
       <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">habitflow v1</span>
-      <button class="theme-btn" onclick="toggleTheme()" id="theme-icon">☀</button>
     </div>
   </aside>
 
@@ -580,14 +579,6 @@ function renderPomoLog(){
   const el=document.getElementById('pomo-log');
   if(!el)return;
   el.innerHTML=pomoLog.length?pomoLog.map(e=>`<div class="pomo-log-item">${e.time} — ${e.label}</div>`).join(''):'<div style="font-size:12px;color:var(--muted)">No sessions yet.</div>';
-}
-
-// ── THEME ──────────────────────────────────────────────────────────────
-let isDark=true;
-function toggleTheme(){
-  isDark=!isDark;
-  document.getElementById('root').classList.toggle('light',!isDark);
-  document.getElementById('theme-icon').textContent=isDark?'☀':'☾';
 }
 
 // ── TOAST ─────────────────────────────────────────────────────────────
