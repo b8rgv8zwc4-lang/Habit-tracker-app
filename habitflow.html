@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Habitflow — Habit Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0c0f;--surface:#15151a;--surface2:#1e1e26;--surface3:#26263280;
+  --border:#2a2a38;--border2:#35354a;
+  --text:#eeeef5;--muted:#6868a0;--hint:#404060;
+  --accent:#7f6dff;--accent2:#00c99b;--accent3:#ffb340;--danger:#ff4f6d;
+  --r:14px;--r-sm:8px;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+.light{
+  --bg:#f2f2f7;--surface:#fff;--surface2:#f0f0f5;--surface3:#e8e8f0;
+  --border:#dadadf;--border2:#c5c5d0;
+  --text:#111128;--muted:#888;--hint:#ccc;
+  --accent:#5540e0;--accent2:#0a8a6a;--accent3:#c47a00;--danger:#c4163a;
+}
+
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;transition:background .3s,color .3s}
+button{cursor:pointer;border:none;background:none;color:var(--text);font-family:var(--font)}
+input,textarea,select{font-family:var(--font);color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 13px;width:100%;outline:none;font-size:14px;transition:.2s}
+input::placeholder{color:var(--hint)}
+input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent)}
+
+/* LAYOUT */
+.shell{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;min-width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1.5rem 1rem}
+.logo{font-family:var(--mono);font-size:18px;font-weight:500;letter-spacing:-.5px;margin-bottom:2rem;padding:0 .5rem}
+.logo b{color:var(--accent)}
+.nav{display:flex;flex-direction:column;gap:2px;flex:1}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-sm);font-size:14px;color:var(--muted);transition:.2s;text-align:left;font-weight:400}
+.nav-btn .icon{font-size:16px;width:20px;text-align:center}
+.nav-btn:hover{background:var(--surface2);color:var(--text)}
+.nav-btn.active{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);font-weight:500}
+.sidebar-footer{display:flex;align-items:center;justify-content:space-between;padding:.75rem .5rem 0;border-top:1px solid var(--border);margin-top:auto}
+.theme-btn{width:34px;height:34px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:15px;display:flex;align-items:center;justify-content:center;transition:.2s}
+.theme-btn:hover{border-color:var(--accent)}
+.main{flex:1;overflow-y:auto;padding:2rem}
+.page{display:none}
+.page.active{display:block}
+.page-header{margin-bottom:1.75rem}
+.page-title{font-size:24px;font-weight:600;letter-spacing:-.5px}
+.page-sub{font-size:13px;color:var(--muted);margin-top:3px}
+
+/* HABITS */
+.habits-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.habit-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;cursor:default;transition:transform .3s cubic-bezier(.34,1.56,.64,1),border-color .2s;position:relative;overflow:hidden}
+.habit-card::after{content:'';position:absolute;top:0;left:0;width:100%;height:3px}
+.habit-card.c-purple::after{background:linear-gradient(90deg,var(--accent),#b39dff)}
+.habit-card.c-teal::after{background:linear-gradient(90deg,var(--accent2),#5effd6)}
+.habit-card.c-amber::after{background:linear-gradient(90deg,var(--accent3),#ffe08a)}
+.habit-card.c-red::after{background:linear-gradient(90deg,var(--danger),#ff9aaa)}
+.habit-card:hover{transform:translateY(-3px) scale(1.005);border-color:var(--border2)}
+.habit-card.pop{animation:pop .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.habit-card.slide-in{animation:slideIn .4s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
+.card-icon-wrap{width:44px;height:44px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:22px}
+.card-btns{display:flex;gap:4px;opacity:0;transition:.2s}
+.habit-card:hover .card-btns{opacity:1}
+.icon-btn{width:28px;height:28px;border-radius:6px;background:var(--surface2);color:var(--muted);font-size:13px;display:flex;align-items:center;justify-content:center;transition:.15s}
+.icon-btn:hover{background:var(--surface3);color:var(--text)}
+.card-name{font-size:15px;font-weight:600;margin-bottom:3px;letter-spacing:-.2px}
+.card-desc{font-size:12px;color:var(--muted);margin-bottom:.9rem;line-height:1.5}
+.streak-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--accent3);background:color-mix(in srgb,var(--accent3) 10%,transparent);padding:3px 8px;border-radius:20px;margin-bottom:.9rem;font-family:var(--mono)}
+.dots-row{display:flex;gap:5px;margin-bottom:.75rem}
+.dot{width:8px;height:8px;border-radius:3px;background:var(--surface3);transition:.2s}
+.dot.done{background:var(--accent2)}
+.dot.today-done{background:var(--accent);box-shadow:0 0 6px color-mix(in srgb,var(--accent) 50%,transparent)}
+.prog-wrap{display:flex;align-items:center;gap:8px;margin-bottom:.9rem}
+.prog-bar{flex:1;height:3px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;border-radius:2px;background:var(--accent2);transition:width .6s ease}
+.prog-pct{font-size:11px;color:var(--muted);font-family:var(--mono);width:28px;text-align:right}
+.check-btn{width:100%;padding:8px;border-radius:var(--r-sm);background:var(--surface2);border:1px solid var(--border);font-size:13px;color:var(--muted);transition:.2s}
+.check-btn:hover{background:color-mix(in srgb,var(--accent2) 15%,transparent);border-color:var(--accent2);color:var(--accent2)}
+.check-btn.checked{background:color-mix(in srgb,var(--accent2) 15%,transparent);border-color:var(--accent2);color:var(--accent2);font-weight:500}
+.empty-state{text-align:center;padding:4rem 2rem;color:var(--muted)}
+.empty-state .big{font-size:40px;margin-bottom:.75rem}
+.empty-state p{font-size:14px;line-height:1.6}
+
+/* ADD FORM */
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;max-width:560px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-full{margin-bottom:12px}
+.field-label{font-size:11px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:block}
+.emoji-grid{display:flex;flex-wrap:wrap;gap:6px}
+.emoji-btn{width:34px;height:34px;border-radius:7px;background:var(--surface2);border:1px solid var(--border);font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s}
+.emoji-btn:hover,.emoji-btn.sel{background:var(--accent);border-color:var(--accent)}
+.color-row{display:flex;gap:8px}
+.color-swatch{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:.2s}
+.color-swatch.sel{border-color:var(--text);transform:scale(1.2)}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)}
+.btn-primary{padding:9px 22px;border-radius:var(--r-sm);background:var(--accent);color:#fff;font-size:13px;font-weight:500;transition:.2s}
+.btn-primary:hover{opacity:.85}
+.btn-ghost{padding:9px 16px;border-radius:var(--r-sm);border:1px solid var(--border);font-size:13px;color:var(--muted);transition:.2s}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ANALYTICS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem}
+.stat-val{font-size:30px;font-weight:600;font-family:var(--mono);color:var(--accent);letter-spacing:-1px}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;font-family:var(--mono)}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1.25rem}
+.chart-label{font-size:11px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:1rem}
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:130px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}
+.bar{width:100%;border-radius:4px 4px 0 0;background:var(--accent);transition:height .7s cubic-bezier(.34,1.56,.64,1);min-height:3px;position:relative}
+.bar:hover{filter:brightness(1.2)}
+.bar-day{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.heatmap{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.hm-cell{aspect-ratio:1;border-radius:4px;background:var(--surface3);transition:.2s;cursor:default}
+.hm-cell:hover{transform:scale(1.3)}
+.hm-cell.l1{background:color-mix(in srgb,var(--accent) 25%,transparent)}
+.hm-cell.l2{background:color-mix(in srgb,var(--accent) 55%,transparent)}
+.hm-cell.l3{background:var(--accent)}
+.per-habit-list{display:flex;flex-direction:column;gap:10px}
+.per-row{display:flex;align-items:center;gap:10px}
+.per-icon{font-size:18px;width:28px;text-align:center}
+.per-name{font-size:13px;font-weight:500;min-width:120px}
+.per-bar-wrap{flex:1;height:6px;background:var(--surface3);border-radius:3px;overflow:hidden}
+.per-bar{height:100%;border-radius:3px;background:var(--accent2);transition:width .7s ease}
+.per-pct{font-size:12px;color:var(--muted);font-family:var(--mono);width:34px;text-align:right}
+
+/* POMODORO */
+.pomo-layout{display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap}
+.pomo-center{display:flex;flex-direction:column;align-items:center;gap:1.25rem;flex:1;min-width:240px}
+.pomo-ring-wrap{position:relative;width:230px;height:230px}
+.pomo-ring-wrap svg{display:block}
+.pomo-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.pomo-time{font-family:var(--mono);font-size:44px;font-weight:500;letter-spacing:-2px}
+.pomo-mode-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--mono)}
+.pomo-session-dots{display:flex;gap:6px}
+.pomo-dot{width:8px;height:8px;border-radius:50%;background:var(--surface3);transition:.3s}
+.pomo-dot.done{background:var(--accent)}
+.pomo-controls{display:flex;gap:10px;align-items:center}
+.pomo-btn{width:48px;height:48px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:16px;display:flex;align-items:center;justify-content:center;transition:.2s}
+.pomo-btn:hover{border-color:var(--accent);color:var(--accent)}
+.pomo-main-btn{width:62px;height:62px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:22px;display:flex;align-items:center;justify-content:center;transition:.2s;box-shadow:0 0 24px color-mix(in srgb,var(--accent) 35%,transparent)}
+.pomo-main-btn:hover{opacity:.85}
+.pomo-side{flex:1;min-width:220px}
+.pomo-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:12px}
+.pomo-panel-title{font-size:11px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.75rem}
+.pomo-habit-btns{display:flex;flex-wrap:wrap;gap:6px}
+.pomo-habit-btn{padding:5px 12px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-size:12px;transition:.2s}
+.pomo-habit-btn:hover,.pomo-habit-btn.sel{background:color-mix(in srgb,var(--accent) 15%,transparent);border-color:var(--accent);color:var(--accent)}
+.pomo-dur-row{display:flex;align-items:center;gap:10px}
+.pomo-dur-row label{font-size:12px;color:var(--muted);min-width:70px}
+.pomo-dur-row input{width:70px}
+.pomo-log{display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto}
+.pomo-log-item{font-size:12px;color:var(--muted);font-family:var(--mono);padding:4px 0;border-bottom:1px solid var(--border)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:200;animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;width:90%;max-width:440px;animation:slideUp .28s cubic-bezier(.34,1.56,.64,1)}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:1.25rem;letter-spacing:-.3px}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);color:var(--text);padding:10px 22px;border-radius:22px;font-size:13px;z-index:300;box-shadow:0 8px 30px rgba(0,0,0,.3);animation:toastIn .3s cubic-bezier(.34,1.56,.64,1)}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%)}}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="shell" id="root">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">habit<b>flow</b></div>
+    <nav class="nav">
+      <button class="nav-btn active" onclick="nav('habits')"><span class="icon">◈</span> Habits</button>
+      <button class="nav-btn" onclick="nav('add')"><span class="icon">+</span> Add Habit</button>
+      <button class="nav-btn" onclick="nav('analytics')"><span class="icon">◎</span> Analytics</button>
+      <button class="nav-btn" onclick="nav('pomodoro')"><span class="icon">◷</span> Pomodoro</button>
+    </nav>
+    <div class="sidebar-footer">
+      <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">habitflow v1</span>
+      <button class="theme-btn" onclick="toggleTheme()" id="theme-icon">☀</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- HABITS PAGE -->
+    <div class="page active" id="p-habits">
+      <div class="page-header">
+        <div class="page-title">Today's habits</div>
+        <div class="page-sub" id="today-str"></div>
+      </div>
+      <div class="habits-grid" id="habits-grid"></div>
+      <div class="empty-state" id="empty-state" style="display:none">
+        <div class="big">◈</div>
+        <p>No habits yet.<br>Add your first habit to start tracking.</p>
+      </div>
+    </div>
+
+    <!-- ADD PAGE -->
+    <div class="page" id="p-add">
+      <div class="page-header">
+        <div class="page-title">Add habit</div>
+        <div class="page-sub">Build a new routine into your day</div>
+      </div>
+      <div class="form-card">
+        <div class="form-full">
+          <label class="field-label">Name</label>
+          <input id="f-name" placeholder="e.g. Morning run" maxlength="40"/>
+        </div>
+        <div class="form-full">
+          <label class="field-label">Description</label>
+          <input id="f-desc" placeholder="Why does this habit matter?" maxlength="80"/>
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="field-label">Goal (days/week)</label>
+            <input id="f-goal" type="number" min="1" max="7" value="7"/>
+          </div>
+          <div>
+            <label class="field-label">Target streak</label>
+            <input id="f-target" type="number" min="1" max="365" value="21"/>
+          </div>
+        </div>
+        <div class="form-full">
+          <label class="field-label">Icon</label>
+          <div class="emoji-grid" id="emoji-picker"></div>
+        </div>
+        <div class="form-full">
+          <label class="field-label">Color</label>
+          <div class="color-row" id="color-picker"></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-ghost" onclick="nav('habits')">Cancel</button>
+          <button class="btn-primary" onclick="addHabit()">Add habit</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS PAGE -->
+    <div class="page" id="p-analytics">
+      <div class="page-header">
+        <div class="page-title">Analytics</div>
+        <div class="page-sub">Your consistency at a glance</div>
+      </div>
+      <div class="stats-row" id="stats-row"></div>
+      <div class="chart-card">
+        <div class="chart-label">Completions this week</div>
+        <div class="bar-chart" id="bar-chart"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="chart-card">
+          <div class="chart-label">30-day heatmap</div>
+          <div class="heatmap" id="heatmap"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-label">Per-habit completion (30d)</div>
+          <div class="per-habit-list" id="per-habit"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POMODORO PAGE -->
+    <div class="page" id="p-pomodoro">
+      <div class="page-header">
+        <div class="page-title">Pomodoro</div>
+        <div class="page-sub">Focus sessions linked to your habits</div>
+      </div>
+      <div class="pomo-layout">
+        <div class="pomo-center">
+          <div class="pomo-ring-wrap">
+            <svg width="230" height="230" viewBox="0 0 230 230">
+              <circle id="pomo-track" cx="115" cy="115" r="100" fill="none" stroke="var(--surface2)" stroke-width="10"/>
+              <circle id="pomo-ring" cx="115" cy="115" r="100" fill="none" stroke="var(--accent)" stroke-width="10"
+                stroke-linecap="round" stroke-dasharray="628" stroke-dashoffset="0" transform="rotate(-90 115 115)" style="transition:stroke-dashoffset .5s linear"/>
+            </svg>
+            <div class="pomo-inner">
+              <div class="pomo-time" id="pomo-display">25:00</div>
+              <div class="pomo-mode-lbl" id="pomo-lbl">Focus</div>
+            </div>
+          </div>
+          <div class="pomo-session-dots" id="pomo-dots"></div>
+          <div class="pomo-controls">
+            <button class="pomo-btn" onclick="resetPomo()" title="Reset">↺</button>
+            <button class="pomo-main-btn" id="pomo-play" onclick="togglePomo()">▶</button>
+            <button class="pomo-btn" onclick="skipPomo()" title="Skip">⏭</button>
+          </div>
+        </div>
+        <div class="pomo-side">
+          <div class="pomo-panel">
+            <div class="pomo-panel-title">Link to habit</div>
+            <div class="pomo-habit-btns" id="pomo-habit-btns"></div>
+          </div>
+          <div class="pomo-panel">
+            <div class="pomo-panel-title">Durations (min)</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div class="pomo-dur-row">
+                <label>Focus</label>
+                <input id="pomo-focus-dur" type="number" min="1" max="90" value="25" style="width:70px" onchange="updateDur()"/>
+              </div>
+              <div class="pomo-dur-row">
+                <label>Break</label>
+                <input id="pomo-break-dur" type="number" min="1" max="30" value="5" style="width:70px" onchange="updateDur()"/>
+              </div>
+            </div>
+          </div>
+          <div class="pomo-panel">
+            <div class="pomo-panel-title">Session log</div>
+            <div class="pomo-log" id="pomo-log"><div style="font-size:12px;color:var(--muted)">No sessions yet.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal" style="display:none" onclick="closeEditModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title">Edit habit</div>
+    <div class="form-full"><label class="field-label">Name</label><input id="e-name" maxlength="40"/></div>
+    <div class="form-full"><label class="field-label">Description</label><input id="e-desc" maxlength="80"/></div>
+    <div class="form-row">
+      <div><label class="field-label">Goal (days/week)</label><input id="e-goal" type="number" min="1" max="7"/></div>
+      <div><label class="field-label">Target streak</label><input id="e-target" type="number" min="1" max="365"/></div>
+    </div>
+    <div class="form-full"><label class="field-label">Icon</label><div class="emoji-grid" id="e-emoji-picker"></div></div>
+    <div class="form-full"><label class="field-label">Color</label><div class="color-row" id="e-color-picker"></div></div>
+    <div class="form-actions">
+      <button class="btn-ghost" onclick="closeEdit()">Cancel</button>
+      <button class="btn-primary" onclick="saveEdit()">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────
+const EMOJIS=['🏃','💪','📚','🧘','✍️','🎸','🌿','💧','🍎','🛌','🧠','🎨','💻','🚴','🧹','🎯','🏋️','🌅','🎵','🧪'];
+const COLORS=[{cls:'c-purple',hex:'#7f6dff'},{cls:'c-teal',hex:'#00c99b'},{cls:'c-amber',hex:'#ffb340'},{cls:'c-red',hex:'#ff4f6d'}];
+
+let habits=JSON.parse(localStorage.getItem('hf2-habits')||'null');
+if(!habits){
+  habits=[
+    {id:1,name:'Morning run',desc:'5km before breakfast',icon:'🏃',color:'c-teal',goal:5,target:21,logs:[]},
+    {id:2,name:'Read 30 min',desc:'Non-fiction or learning',icon:'📚',color:'c-purple',goal:7,target:30,logs:[]},
+    {id:3,name:'Drink 2L water',desc:'Stay hydrated all day',icon:'💧',color:'c-amber',goal:7,target:14,logs:[]},
+  ];
+  save();
+}
+
+let selEmoji=EMOJIS[0],selColor=COLORS[0].cls;
+let editId=null,editEmoji=EMOJIS[0],editColor=COLORS[0].cls;
+let pomoDur=25*60,breakDur=5*60,pomoCur=25*60,pomoActive=false,pomoInterval=null;
+let pomoMode='focus',pomoSession=0,pomoHabit=null,pomoLog=[];
+
+function save(){localStorage.setItem('hf2-habits',JSON.stringify(habits))}
+function today(){return new Date().toISOString().split('T')[0]}
+function calcStreak(h){
+  let s=0,d=new Date();
+  for(let i=0;i<365;i++){
+    if(h.logs.includes(d.toISOString().split('T')[0])){s++;d.setDate(d.getDate()-1)}
+    else break;
+  }
+  return s;
+}
+
+// ── NAVIGATION ─────────────────────────────────────────────────────────
+function nav(id){
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',['habits','add','analytics','pomodoro'][i]===id));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('p-'+id).classList.add('active');
+  if(id==='habits')renderHabits();
+  if(id==='analytics')renderAnalytics();
+  if(id==='pomodoro')renderPomoPage();
+}
+
+// ── HABITS ─────────────────────────────────────────────────────────────
+function renderHabits(){
+  const t=today();
+  document.getElementById('today-str').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const g=document.getElementById('habits-grid');
+  const em=document.getElementById('empty-state');
+  if(!habits.length){g.innerHTML='';em.style.display='';return}
+  em.style.display='none';
+  const last7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return d.toISOString().split('T')[0]});
+  g.innerHTML=habits.map((h,idx)=>{
+    const done=h.logs.includes(t);
+    const streak=calcStreak(h);
+    const weekDone=h.logs.filter(l=>last7.includes(l)).length;
+    const pct=Math.round(weekDone/Math.min(h.goal,7)*100);
+    const dots=last7.map(d=>`<div class="dot ${h.logs.includes(d)?(d===t?'today-done':'done'):''}"></div>`).join('');
+    return`<div class="habit-card ${h.color} slide-in" style="animation-delay:${idx*0.05}s" id="card-${h.id}">
+      <div class="card-top">
+        <div class="card-icon-wrap">${h.icon}</div>
+        <div class="card-btns">
+          <button class="icon-btn" onclick="openEdit(${h.id})" title="Edit">✏</button>
+          <button class="icon-btn" onclick="deleteHabit(${h.id})" title="Delete" style="color:var(--danger)">✕</button>
+        </div>
+      </div>
+      <div class="card-name">${h.name}</div>
+      <div class="card-desc">${h.desc||'—'}</div>
+      <div class="streak-badge">🔥 ${streak}d streak · target ${h.target}d</div>
+      <div class="dots-row">${dots}</div>
+      <div class="prog-wrap">
+        <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+        <span class="prog-pct">${pct}%</span>
+      </div>
+      <button class="check-btn ${done?'checked':''}" onclick="toggleLog(${h.id})">${done?'✓ Done today':'Mark as done'}</button>
+    </div>`;
+  }).join('');
+}
+
+function toggleLog(id){
+  const h=habits.find(x=>x.id===id);
+  const t=today();
+  if(h.logs.includes(t))h.logs=h.logs.filter(l=>l!==t);
+  else{h.logs.push(t);const el=document.getElementById('card-'+id);if(el){el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop')}}
+  save();renderHabits();
+}
+
+function deleteHabit(id){
+  if(!confirm('Delete this habit?'))return;
+  habits=habits.filter(h=>h.id!==id);save();renderHabits();
+}
+
+// ── ADD HABIT ──────────────────────────────────────────────────────────
+function buildEmojiPicker(containerId,cur,cb){
+  document.getElementById(containerId).innerHTML=EMOJIS.map(e=>`<button class="emoji-btn ${e===cur?'sel':''}" onclick="${cb}('${e}',this)">${e}</button>`).join('');
+}
+function buildColorPicker(containerId,cur,cb){
+  document.getElementById(containerId).innerHTML=COLORS.map(c=>`<div class="color-swatch ${c.cls===cur?'sel':''}" style="background:${c.hex}" onclick="${cb}('${c.cls}',this)"></div>`).join('');
+}
+function pickEmoji(e,el){selEmoji=e;document.querySelectorAll('#emoji-picker .emoji-btn').forEach(b=>b.classList.remove('sel'));el.classList.add('sel')}
+function pickColor(c,el){selColor=c;document.querySelectorAll('#color-picker .color-swatch').forEach(b=>b.classList.remove('sel'));el.classList.add('sel')}
+function pickEditEmoji(e,el){editEmoji=e;document.querySelectorAll('#e-emoji-picker .emoji-btn').forEach(b=>b.classList.remove('sel'));el.classList.add('sel')}
+function pickEditColor(c,el){editColor=c;document.querySelectorAll('#e-color-picker .color-swatch').forEach(b=>b.classList.remove('sel'));el.classList.add('sel')}
+
+function addHabit(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){document.getElementById('f-name').focus();return}
+  habits.push({id:Date.now(),name,desc:document.getElementById('f-desc').value.trim(),icon:selEmoji,color:selColor,goal:+document.getElementById('f-goal').value||7,target:+document.getElementById('f-target').value||21,logs:[]});
+  save();showToast('Habit added ✓');
+  document.getElementById('f-name').value='';document.getElementById('f-desc').value='';
+  nav('habits');
+}
+
+// ── EDIT ───────────────────────────────────────────────────────────────
+function openEdit(id){
+  const h=habits.find(x=>x.id===id);if(!h)return;
+  editId=id;editEmoji=h.icon;editColor=h.color;
+  document.getElementById('e-name').value=h.name;
+  document.getElementById('e-desc').value=h.desc||'';
+  document.getElementById('e-goal').value=h.goal;
+  document.getElementById('e-target').value=h.target;
+  buildEmojiPicker('e-emoji-picker',h.icon,'pickEditEmoji');
+  buildColorPicker('e-color-picker',h.color,'pickEditColor');
+  document.getElementById('edit-modal').style.display='flex';
+}
+function closeEdit(){document.getElementById('edit-modal').style.display='none';editId=null}
+function closeEditModal(e){if(e.target===document.getElementById('edit-modal'))closeEdit()}
+function saveEdit(){
+  const h=habits.find(x=>x.id===editId);if(!h)return;
+  h.name=document.getElementById('e-name').value.trim()||h.name;
+  h.desc=document.getElementById('e-desc').value.trim();
+  h.goal=+document.getElementById('e-goal').value||h.goal;
+  h.target=+document.getElementById('e-target').value||h.target;
+  h.icon=editEmoji;h.color=editColor;
+  save();closeEdit();renderHabits();showToast('Habit updated ✓');
+}
+
+// ── ANALYTICS ──────────────────────────────────────────────────────────
+function renderAnalytics(){
+  const t=today();
+  const doneToday=habits.filter(h=>h.logs.includes(t)).length;
+  const allStreaks=habits.map(h=>calcStreak(h));
+  const best=allStreaks.length?Math.max(...allStreaks):0;
+  const days30=Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-29+i);return d.toISOString().split('T')[0]});
+  const total30=habits.reduce((a,h)=>a+h.logs.filter(l=>days30.includes(l)).length,0);
+  document.getElementById('stats-row').innerHTML=[
+    {v:habits.length,l:'Total habits'},{v:`${doneToday}/${habits.length}`,l:'Done today'},
+    {v:best,l:'Best streak'},{v:total30,l:'Logs (30d)'}
+  ].map(s=>`<div class="stat-card"><div class="stat-val">${s.v}</div><div class="stat-lbl">${s.l}</div></div>`).join('');
+
+  const daysShort=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const weekBars=daysShort.map((_,i)=>{
+    const d=new Date();const dow=d.getDay()||7;d.setDate(d.getDate()-(dow-1)+i);
+    const s=d.toISOString().split('T')[0];
+    return habits.reduce((a,h)=>a+(h.logs.includes(s)?1:0),0);
+  });
+  const mx=Math.max(...weekBars,1);
+  document.getElementById('bar-chart').innerHTML=weekBars.map((v,i)=>`<div class="bar-col"><div class="bar" style="height:${Math.round(v/mx*100)}%;opacity:${.4+v/mx*.6}" title="${v} habit${v!==1?'s':''}"></div><div class="bar-day">${daysShort[i]}</div></div>`).join('');
+
+  const cells=days30.map(s=>{const c=habits.filter(h=>h.logs.includes(s)).length;return`<div class="hm-cell ${c===0?'':c<2?'l1':c<4?'l2':'l3'}" title="${s}: ${c}"></div>`}).join('');
+  document.getElementById('heatmap').innerHTML=cells;
+
+  const perList=habits.map(h=>{
+    const pct=days30.length?Math.round(h.logs.filter(l=>days30.includes(l)).length/days30.length*100):0;
+    return`<div class="per-row"><span class="per-icon">${h.icon}</span><span class="per-name">${h.name}</span><div class="per-bar-wrap"><div class="per-bar" style="width:${pct}%"></div></div><span class="per-pct">${pct}%</span></div>`;
+  }).join('');
+  document.getElementById('per-habit').innerHTML=perList||'<span style="font-size:13px;color:var(--muted)">No habits yet.</span>';
+}
+
+// ── POMODORO ───────────────────────────────────────────────────────────
+function updateDur(){
+  if(pomoActive)return;
+  pomoDur=(+document.getElementById('pomo-focus-dur').value||25)*60;
+  breakDur=(+document.getElementById('pomo-break-dur').value||5)*60;
+  pomoCur=pomoMode==='focus'?pomoDur:breakDur;
+  updatePomoDisplay();
+}
+
+function renderPomoPage(){
+  const dots=document.getElementById('pomo-dots');
+  dots.innerHTML=Array.from({length:4},(_,i)=>`<div class="pomo-dot ${i<pomoSession%4?'done':''}"></div>`).join('');
+  const btns=document.getElementById('pomo-habit-btns');
+  btns.innerHTML=`<button class="pomo-habit-btn ${pomoHabit===null?'sel':''}" onclick="selPomoHabit(null,this)">General</button>`+
+    habits.map(h=>`<button class="pomo-habit-btn ${pomoHabit===h.id?'sel':''}" onclick="selPomoHabit(${h.id},this)">${h.icon} ${h.name}</button>`).join('');
+  updatePomoDisplay();
+  renderPomoLog();
+}
+
+function selPomoHabit(id,el){
+  pomoHabit=id;
+  document.querySelectorAll('.pomo-habit-btn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function updatePomoDisplay(){
+  const m=String(Math.floor(pomoCur/60)).padStart(2,'0');
+  const s=String(pomoCur%60).padStart(2,'0');
+  document.getElementById('pomo-display').textContent=`${m}:${s}`;
+  const total=pomoMode==='focus'?pomoDur:breakDur;
+  const offset=628*(1-pomoCur/total);
+  const ring=document.getElementById('pomo-ring');
+  if(ring){ring.style.strokeDashoffset=offset;ring.style.stroke=pomoMode==='focus'?'var(--accent)':'var(--accent2)'}
+  const lbl=document.getElementById('pomo-lbl');
+  if(lbl)lbl.textContent=pomoMode==='focus'?'Focus':'Break';
+}
+
+function togglePomo(){
+  const btn=document.getElementById('pomo-play');
+  if(pomoActive){clearInterval(pomoInterval);pomoActive=false;btn.textContent='▶'}
+  else{pomoActive=true;btn.textContent='⏸';pomoInterval=setInterval(()=>{pomoCur--;updatePomoDisplay();if(pomoCur<=0)finishPomo();},1000)}
+}
+
+function finishPomo(){
+  clearInterval(pomoInterval);pomoActive=false;
+  document.getElementById('pomo-play').textContent='▶';
+  if(pomoMode==='focus'){
+    pomoSession++;
+    const t=today();
+    if(pomoHabit!==null){const h=habits.find(x=>x.id===pomoHabit);if(h&&!h.logs.includes(t)){h.logs.push(t);save()}}
+    const hname=pomoHabit?habits.find(x=>x.id===pomoHabit)?.name:'General';
+    pomoLog.unshift({time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),label:`${hname} · ${Math.round(pomoDur/60)}min focus`});
+    pomoMode='break';pomoCur=breakDur;showToast('Focus complete! Take a break.');
+  } else {
+    pomoMode='focus';pomoCur=pomoDur;showToast('Break over! Time to focus.');
+  }
+  renderPomoPage();
+}
+
+function resetPomo(){
+  clearInterval(pomoInterval);pomoActive=false;pomoCur=pomoDur;pomoMode='focus';
+  document.getElementById('pomo-play').textContent='▶';updatePomoDisplay();
+}
+function skipPomo(){clearInterval(pomoInterval);pomoActive=false;document.getElementById('pomo-play').textContent='▶';finishPomo()}
+function renderPomoLog(){
+  const el=document.getElementById('pomo-log');
+  if(!el)return;
+  el.innerHTML=pomoLog.length?pomoLog.map(e=>`<div class="pomo-log-item">${e.time} — ${e.label}</div>`).join(''):'<div style="font-size:12px;color:var(--muted)">No sessions yet.</div>';
+}
+
+// ── THEME ──────────────────────────────────────────────────────────────
+let isDark=true;
+function toggleTheme(){
+  isDark=!isDark;
+  document.getElementById('root').classList.toggle('light',!isDark);
+  document.getElementById('theme-icon').textContent=isDark?'☀':'☾';
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2300);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+buildEmojiPicker('emoji-picker',selEmoji,'pickEmoji');
+buildColorPicker('color-picker',selColor,'pickColor');
+renderHabits();
+</script>
+</body>
+</html>
